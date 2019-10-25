@@ -77,8 +77,14 @@ SHORTCUT_INFO="";
 MANUFACTURER_DIR=".";
 MANUFACTURER="Third Party Developer";
 PRODUCT_DESC="No description given.";
-while [ "${NOTFOUND}" = ""  ]; do
+MSI_ARCH="";
+SHIFT=2
+while [ "${SHIFT}" -ne "0"  ]; do
+    SHIFT=2
     case "$1" in
+        -a|--architecture)
+            MSI_ARCH="$2";
+            ;;
         -p|--product-name)
             PRODUCT_NAME="$2";
             ;;
@@ -129,11 +135,11 @@ while [ "${NOTFOUND}" = ""  ]; do
             ONLY_64BIT="${ONLY_64BIT} $2";
             ;;
         *)
-            NOTFOUND=1;
+            SHIFT=0;
             ;;
     esac
-    if [ "${NOTFOUND}" = "" ]; then
-        shift 2;
+    if [ "${SHIFT}" -ne "0" ]; then
+        shift ${SHIFT};
     fi
 done
 if [ "${OUTPUT}" = "" ] || [ "${SRCFOLDER}" = "" ] || [ "${UPGRADE_CODE}" = "" ] \
@@ -142,11 +148,20 @@ if [ "${OUTPUT}" = "" ] || [ "${SRCFOLDER}" = "" ] || [ "${UPGRADE_CODE}" = "" ]
     print_usage;
     exit 1;
 fi
+if [ "${MSI_ARCH}" != "" ] && [ "${MSI_ARCH}" != "Intel" ] && [ "${MSI_ARCH}" != "x64" ]; then
+    echo "Error: --architecture must be blank, 'Intel' or 'x64'.";
+    exit 1;
+fi
 if [ ! -d "${SRCFOLDER}" ] ; then
     echo "Error: -d|--dist-folder cannot be found.";
     exit 1;
 fi
 FILES="$*";
+
+x64=""
+if [ "${MSI_ARCH}" == "x64" ]; then
+    x64="64"
+fi
 
 # Copy all the static tables
 cp -a "${DIR}/build-msi"/* "${TMP_FOLDER}";
@@ -288,8 +303,8 @@ WindowsFolder	TARGETDIR	.
 SystemFolder	TARGETDIR	.
 SYSTEM32	SystemFolder	.
 SYSTEM64	WindowsFolder	Sysnative:.
-ProgramFilesFolder	TARGETDIR	.
-MAINDIR	ProgramFilesFolder	${MANUFACTURER_DIR}:.
+ProgramFiles${x64}Folder	TARGETDIR	.
+MAINDIR	ProgramFiles${x64}Folder	${MANUFACTURER_DIR}:.
 PROJECTDIR	MAINDIR	${PROJECT_DIR}:.
 ProgramMenuFolder	TARGETDIR	.
 PROGMENUDIR	ProgramMenuFolder	${MANUFACTURER_DIR}
@@ -449,13 +464,13 @@ _SummaryInformation	PropertyId
 4	${MANUFACTURER}
 5	Installer,MSI,Database
 6	${PRODUCT_DESC}
-7	;1033
+7	${MSI_ARCH};1033
 8	Administrator
 9	{${PRODUCT_CODE}}
 11	2001/09/13 16:12:18
 12	2001/09/13 16:12:18
 13	2014/10/07 09:59:54
-14	100
+14	200
 15	0
 18	Windows Installer
 19	1
