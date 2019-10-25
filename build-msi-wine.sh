@@ -67,6 +67,7 @@ OUTPUT="";
 SRCFOLDER="";
 BINARYFOLDER="";
 ID_FILE="";
+ICON="";
 OVERRIDES="";
 PROJECT_DIR="";
 UPGRADE_CODE="";
@@ -96,6 +97,9 @@ while [ "${SHIFT}" -ne "0"  ]; do
             ;;
         -D|--description)
             PRODUCT_DESC="$2";
+            ;;
+        -i|--icon)
+            ICON="$2";
             ;;
         -m|--manufacturer-dir)
             MANUFACTURER_DIR="$2";
@@ -597,6 +601,9 @@ for FILE in ${BINARYFILES}; do
     >> "${TMP_FOLDER}/Binary.idt";
 done
 # Add all the Icon resources
+if [ "${ICON}" != "" ]; then
+    cp "${ICON}" "${TMP_FOLDER}"/Icon/Icon.ico
+fi
 cat <<EOF > "${TMP_FOLDER}/Icon.idt"
 Name	Data
 s72	v0
