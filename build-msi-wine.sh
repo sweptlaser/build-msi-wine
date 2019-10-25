@@ -4,7 +4,7 @@
 set -o errexit
 
 # Always generate a new product code (upgrade codes are unique)
-PRODUCT_CODE=$(uuidgen | tr '[a-z]' '[A-Z]');
+PRODUCT_CODE=$(uuid | tr '[a-z]' '[A-Z]');
 
 # use a convenient cache directory for all reusable files
 XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
