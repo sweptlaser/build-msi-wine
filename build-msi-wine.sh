@@ -6,6 +6,10 @@ set -o errexit
 # Always generate a new product code (upgrade codes are unique)
 PRODUCT_CODE=$(uuidgen | tr '[a-z]' '[A-Z]');
 
+# use a convenient cache directory for all reusable files
+XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
+export CACHEDIR="${XDG_CACHE_HOME}"/build-msi-wine;
+
 # get the directory where this script lives
 DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
@@ -79,12 +83,17 @@ MANUFACTURER_DIR=".";
 MANUFACTURER="Third Party Developer";
 PRODUCT_DESC="No description given.";
 MSI_ARCH="";
+ARCH="";
 SHIFT=2
 while [ "${SHIFT}" -ne "0"  ]; do
     SHIFT=2
     case "$1" in
         -a|--architecture)
-            MSI_ARCH="$2";
+            if [ "$2" == "Mixed" ]; then
+                ARCH="Mixed"
+            else
+                MSI_ARCH="$2";
+            fi
             ;;
         -p|--product-name)
             PRODUCT_NAME="$2";
@@ -165,6 +174,15 @@ FILES="$*";
 x64=""
 if [ "${MSI_ARCH}" == "x64" ]; then
     x64="64"
+fi
+
+# build the MSI helper DLL (if it does not exist)
+if [ "${ARCH}" == "Mixed" ]; then
+    mkdir -p "${CACHEDIR}"
+    LIBHELPER="${CACHEDIR}/libhelper.dll";
+    if [ ! -f "${LIBHELPER}" ]; then
+        ${DIR}/build-libhelper.sh "${LIBHELPER}"
+    fi
 fi
 
 # Copy all the static tables
@@ -500,6 +518,19 @@ for UNIXFILE in ${ONLY_64BIT}; do
         "VersionNT64" \
     >> "${TMP_FOLDER}/Conditio.idt";
 done
+# Generate the CustomAction table
+cat <<EOF > "${TMP_FOLDER}/CustomAc.idt"
+Action	Type	Source	Target
+s72	i2	S64	S255
+CustomAction	Action
+EOF
+if [ "${ARCH}" == "Mixed" ]; then
+    cat <<EOF >> "${TMP_FOLDER}/CustomAc.idt"
+SetMainFolder	35	MAINDIR	[ProgramFilesFolder]\\${MANUFACTURER_DIR}
+SetProgramFiles64Folder	1	libhelper	GetProgramFiles
+SetSystem64Folder	35	SYSTEM64	[WindowsFolder]\\system32
+EOF
+fi
 OLDIFS="${IFS}";
 IFS=$'\n';
 for ACTION_INFO in ${CUSTOM_ACTIONS}; do
@@ -582,6 +613,9 @@ if [ "${SHORTCUT_INFO}" != "" ]; then
     >> "${TMP_FOLDER}/Shortcut.idt";
 fi
 # Add all the Binary resources
+if [ "${ARCH}" == "Mixed" ]; then
+    cp -a "${LIBHELPER}" "${TMP_FOLDER}/Binary";
+fi
 BINARY_TABLE=""
 if [ "${BINARYFOLDER}" != "" ]; then
     cp -a "${BINARYFOLDER}" "${TMP_FOLDER}/Binary";
@@ -632,6 +666,7 @@ done
     Control \
     ControlCondition \
     ControlEvent \
+    CustomAction \
     Dialog \
     Directory \
     Error \
