@@ -447,6 +447,7 @@ ComponentDownload	ftp://anonymous@sweptlaser.com/
 CustomSetupIcon	custicon
 DefaultUIFont	DlgFont8
 DialogBitmap	dlgbmp
+DISABLEADVTSHORTCUTS	1
 DlgTitleFont	{&DlgFontBold8}
 ErrIcon	errico
 ErrorDialog	ErrorDlg
