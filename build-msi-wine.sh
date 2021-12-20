@@ -46,6 +46,7 @@ print_usage()
     printf "\t-c, --comp-ids <file containing component ids>\n"
     printf "\t-6, --64-bit <64-bit only filename>\n"
     printf "\t-C, --custom-action <unique name>=<TIME>:<CONDITION>:<ID>:<SOURCE>:<TARGET>\n"
+    printf "\t--custom-install-action <unique name>=<TIME>:<CONDITION>:<ID>:<SOURCE>:<TARGET>\n"
     printf "\t-O, --override-file <FILE>=<DIRECTORY>:<FILENAME>:<ATTRIBUTES>:<CONDITION>\n"
     printf "\t-S, --set-feature <FILE>=<TITLE>:<DESCRIPTION>:<DISPLAY>:<LEVEL>\n"
     printf "\t-d, --project-dir <base directory inside 'Program Files'>\n"
@@ -84,6 +85,7 @@ MANUFACTURER="Third Party Developer";
 PRODUCT_DESC="No description given.";
 MSI_ARCH="";
 ARCH="";
+CUSTOM_INSTALL_ACTIONS="";
 SHIFT=2
 while [ "${SHIFT}" -ne "0"  ]; do
     SHIFT=2
@@ -137,6 +139,9 @@ while [ "${SHIFT}" -ne "0"  ]; do
             ;;
         -C|--custom-action)
             CUSTOM_ACTIONS="${CUSTOM_ACTIONS}"$'\n'"$2";
+            ;;
+        -C|--custom-install-action)
+            CUSTOM_INSTALL_ACTIONS="${CUSTOM_INSTALL_ACTIONS}"$'\n'"$2";
             ;;
         -S|--set-feature)
             FEATURE_DETAILS="${FEATURE_DETAILS}"$'\n'"$2";
@@ -536,9 +541,22 @@ OLDIFS="${IFS}";
 IFS=$'\n';
 for ACTION_INFO in ${CUSTOM_ACTIONS}; do
     ACTION_NAME=$(echo "${ACTION_INFO}" | sed 's/\([^=]*\)=.*/\1/g');
-    ACTION_ID=$(echo "${ACTION_INFO}" | sed 's/.*=\([^:]*\):\([^:]*\):\([^:]*\):\([^:]*\):\([^:]*\)/\3/g');
-    ACTION_SRC=$(echo "${ACTION_INFO}" | sed 's/.*=\([^:]*\):\([^:]*\):\([^:]*\):\([^:]*\):\([^:]*\)/\4/g');
-    ACTION_TGT=$(echo "${ACTION_INFO}" | sed 's/.*=\([^:]*\):\([^:]*\):\([^:]*\):\([^:]*\):\([^:]*\)/\5/g');
+    ACTION_ID=$(echo "${ACTION_INFO}" | sed 's/.*=\([^:]*\):\([^:]*\):\([^:]*\):\([^:]*\):\(.*\)/\3/g');
+    ACTION_SRC=$(echo "${ACTION_INFO}" | sed 's/.*=\([^:]*\):\([^:]*\):\([^:]*\):\([^:]*\):\(.*\)/\4/g');
+    ACTION_TGT=$(echo "${ACTION_INFO}" | sed 's/.*=\([^:]*\):\([^:]*\):\([^:]*\):\([^:]*\):\(.*\)/\5/g');
+    printf "%s\t%s\t%s\t%s\r\n" \
+        "${ACTION_NAME}" \
+        "${ACTION_ID}" \
+        "${ACTION_SRC}" \
+        "${ACTION_TGT}" \
+    >> "${TMP_FOLDER}/CustomAc.idt";
+done
+
+for ACTION_INFO in ${CUSTOM_INSTALL_ACTIONS}; do
+    ACTION_NAME=$(echo "${ACTION_INFO}" | sed 's/\([^=]*\)=.*/\1/g');
+    ACTION_ID=$(echo "${ACTION_INFO}" | sed 's/.*=\([^:]*\):\([^:]*\):\([^:]*\):\([^:]*\):\(.*\)/\3/g');
+    ACTION_SRC=$(echo "${ACTION_INFO}" | sed 's/.*=\([^:]*\):\([^:]*\):\([^:]*\):\([^:]*\):\(.*\)/\4/g');
+    ACTION_TGT=$(echo "${ACTION_INFO}" | sed 's/.*=\([^:]*\):\([^:]*\):\([^:]*\):\([^:]*\):\(.*\)/\5/g');
     printf "%s\t%s\t%s\t%s\r\n" \
         "${ACTION_NAME}" \
         "${ACTION_ID}" \
@@ -576,8 +594,8 @@ OLDIFS="${IFS}";
 IFS=$'\n';
 for ACTION_INFO in ${CUSTOM_ACTIONS}; do
     ACTION_NAME=$(echo "${ACTION_INFO}" | sed 's/\([^=]*\)=.*/\1/g');
-    ACTION_TIME=$(echo "${ACTION_INFO}" | sed 's/.*=\([^:]*\):\([^:]*\):\([^:]*\):\([^:]*\):\([^:]*\)/\1/g');
-    ACTION_COND=$(echo "${ACTION_INFO}" | sed 's/.*=\([^:]*\):\([^:]*\):\([^:]*\):\([^:]*\):\([^:]*\)/\2/g');
+    ACTION_TIME=$(echo "${ACTION_INFO}" | sed 's/.*=\([^:]*\):\([^:]*\):\([^:]*\):\([^:]*\):\(.*\)/\1/g');
+    ACTION_COND=$(echo "${ACTION_INFO}" | sed 's/.*=\([^:]*\):\([^:]*\):\([^:]*\):\([^:]*\):\(.*\)/\2/g');
     printf "%s\t%s\t%s\r\n" \
         "${ACTION_NAME}" \
         "${ACTION_COND}" \
@@ -585,6 +603,22 @@ for ACTION_INFO in ${CUSTOM_ACTIONS}; do
     >> "${TMP_FOLDER}/InstallU.idt";
 done
 IFS="${OLDIFS}";
+
+# Append custom install actions to InstallExecuteSequence table
+OLDIFS="${IFS}";
+IFS=$'\n';
+for ACTION_INFO in ${CUSTOM_INSTALL_ACTIONS}; do
+    ACTION_NAME=$(echo "${ACTION_INFO}" | sed 's/\([^=]*\)=.*/\1/g');
+    ACTION_TIME=$(echo "${ACTION_INFO}" | sed 's/.*=\([^:]*\):\([^:]*\):\([^:]*\):\([^:]*\):\(.*\)/\1/g');
+    ACTION_COND=$(echo "${ACTION_INFO}" | sed 's/.*=\([^:]*\):\([^:]*\):\([^:]*\):\([^:]*\):\(.*\)/\2/g');
+    printf "%s\t%s\t%s\r\n" \
+        "${ACTION_NAME}" \
+        "${ACTION_COND}" \
+        "${ACTION_TIME}" \
+    >> "${TMP_FOLDER}/InstallE.idt";
+done
+IFS="${OLDIFS}";
+
 # Generate the Shortcut table
 cat <<EOF > "${TMP_FOLDER}/Shortcut.idt"
 Shortcut	Directory_	Name	Component_	Target	Arguments	Description	Hotkey	Icon_	IconIndex	ShowCmd	WkDir
